@@ -1,5 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>マジックブラシ</title>
+  <style>
+    body { margin: 0; background: #121212; color: #fff; font-family: sans-serif; text-align: center; padding: 10px; }
+    h2 { font-size: 1.2rem; margin: 10px 0; }
+    #editor { position: relative; width: 90vw; height: 50vh; margin: 10px auto; background: #222; border-radius: 8px; overflow: hidden; }
+    canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
+    .controls { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+    input[type="text"] { width: 80%; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; font-size: 16px; }
+    button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 20px; font-weight: bold; font-size: 16px; }
+    #status { margin-top: 10px; font-size: 0.9rem; color: #aaa; }
+  </style>
+</head>
+<body>
+  <h2>マジックブラシ</h2>
+  
+  <div id="editor">
+    <canvas id="bgCanvas"></canvas>
+    <canvas id="drawCanvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <input type="file" id="imageInput" accept="image/*">
+    <input type="text" id="promptInput" placeholder="書き換える内容（英語: a red cat など）">
+    <button onclick="runInpaint()">書き換え実行</button>
+    <button onclick="clearMask()" style="background:#555;">塗りつぶしクリア</button>
+  </div>
+  <div id="status"></div>
+
   <script>
-    const FAL_KEY = 'd53c1497-e1e4-44cc-81b3-9ef0186a6930:81384732d2e1bc64637e46d379886080'; // ★ここに取得したAPIキーを貼り付け
+    const FAL_KEY = 'D53c1497-e1e4-44cc-81b3-9ef0186a6930:81384732d2e1bc64637e46d379886080';
 
     const bgCanvas = document.getElementById('bgCanvas');
     const drawCanvas = document.getElementById('drawCanvas');
@@ -42,7 +75,7 @@
       const touch = e.touches[0];
       drawCtx.lineWidth = 30;
       drawCtx.lineCap = 'round';
-      drawCtx.strokeStyle = 'white'; // マスクは白にする方が安定します
+      drawCtx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
       drawCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
       drawCtx.stroke();
       drawCtx.beginPath();
@@ -101,7 +134,7 @@
           resultImg.src = data.images[0].url;
         } else {
           console.log('Error details:', data);
-          status.innerText = 'エラーが発生しました。APIキーまたは残高を確認してください。';
+          status.innerText = 'エラーが発生しました。APIキーまたは設定を確認してください。';
         }
       } catch (err) {
         console.error(err);
@@ -109,3 +142,5 @@
       }
     }
   </script>
+</body>
+</html>
