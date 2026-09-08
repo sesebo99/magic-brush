@@ -4,6 +4,14 @@ export const config = {
   },
 };
 
+async function buffer(readable) {
+  const chunks = [];
+  for await (const chunk of readable) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
@@ -15,13 +23,16 @@ export default async function handler(req, res) {
   }
 
   try {
+    const buf = await buffer(req);
+    const contentType = req.headers['content-type'];
+
     const response = await fetch('https://api-inference.huggingface.co/models/runwayml/stable-diffusion-inpainting', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${HF_TOKEN}`
+        'Authorization': `Bearer ${HF_TOKEN}`,
+        'Content-Type': contentType
       },
-      body: req,
-      duplex: 'half' // Node.jsのストリーム送信エラーを解決する設定
+      body: buf
     });
 
     const data = await response.arrayBuffer();
