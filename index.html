@@ -1,142 +1,42 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>マジックブラシ (完全無料版)</title>
-  <style>
-    body { margin: 0; background: #121212; color: #fff; font-family: sans-serif; text-align: center; padding: 10px; }
-    h2 { font-size: 1.2rem; margin: 10px 0; }
-    #editor { position: relative; width: 90vw; height: 50vh; margin: 10px auto; background: #222; border-radius: 8px; overflow: hidden; }
-    canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; }
-    .controls { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-    input[type="text"] { width: 80%; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #222; color: #fff; font-size: 16px; }
-    button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 20px; font-weight: bold; font-size: 16px; }
-    #status { margin-top: 15px; font-size: 0.85rem; color: #4dabf7; font-weight: bold; word-break: break-all; padding: 0 10px; }
-  </style>
-</head>
-<body>
-  <h2>マジックブラシ (完全無料版)</h2>
-  
-  <div id="editor">
-    <canvas id="bgCanvas"></canvas>
-    <canvas id="drawCanvas"></canvas>
-  </div>
+# マジックブラシ 完成版
 
-  <div class="controls">
-    <input type="file" id="imageInput" accept="image/*">
-    <input type="text" id="promptInput" placeholder="書き換える内容（英語: a cat など）">
-    <button onclick="runInpaint()">書き換え実行</button>
-    <button onclick="clearMask()" style="background:#555;">塗りつぶしクリア</button>
-  </div>
-  <div id="status"></div>
+Vercel + Hugging Face Inference Providers で動かす簡易AI画像編集アプリです。
 
-  <script>
-    const bgCanvas = document.getElementById('bgCanvas');
-    const drawCanvas = document.getElementById('drawCanvas');
-    const bgCtx = bgCanvas.getContext('2d');
-    const drawCtx = drawCanvas.getContext('2d');
-    let isDrawing = false;
-    let loadedImage = null;
+## ファイル構成
 
-    function initCanvas() {
-      bgCanvas.width = drawCanvas.width = drawCanvas.offsetWidth;
-      bgCanvas.height = drawCanvas.height = drawCanvas.offsetHeight;
-    }
-    window.onload = initCanvas;
+```text
+magic-brush/
+├─ public/
+│  └─ index.html
+├─ api/
+│  └─ hf-inpaint.js
+└─ package.json
+```
 
-    document.getElementById('imageInput').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          loadedImage = img;
-          initCanvas();
-          bgCtx.drawImage(img, 0, 0, bgCanvas.width, bgCanvas.height);
-        };
-        img.src = event.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
+## Vercelへの設定
 
-    drawCanvas.addEventListener('touchstart', (e) => { isDrawing = true; draw(e); });
-    drawCanvas.addEventListener('touchmove', (e) => { draw(e); });
-    drawCanvas.addEventListener('touchend', () => { isDrawing = false; drawCtx.beginPath(); });
+1. この3ファイルをVercelプロジェクトに配置
+2. Deploy
+3. Vercel Project Settings → Environment Variables
+4. `HF_TOKEN` を追加
+5. Hugging Faceのトークンには Inference Providers を利用できる権限を付ける
+6. Redeploy
 
-    function draw(e) {
-      if (!isDrawing) return;
-      const rect = drawCanvas.getBoundingClientRect();
-      const touch = e.touches[0];
-      drawCtx.lineWidth = 30;
-      drawCtx.lineCap = 'round';
-      drawCtx.strokeStyle = 'white';
-      drawCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-      drawCtx.stroke();
-      drawCtx.beginPath();
-      drawCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    }
+## 使い方
 
-    function clearMask() {
-      drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-    }
+1. 写真を選択
+2. 指で変更したい場所を赤く塗る
+3. 「a cat」など英語で変更内容を書く
+4. 「書き換え実行」
 
-    async function runInpaint() {
-      const prompt = document.getElementById('promptInput').value;
-      const status = document.getElementById('status');
-      if (!loadedImage || !prompt) {
-        alert('画像と書き換え用のテキストを入力してください');
-        return;
-      }
+## 重要
 
-      status.style.color = '#4dabf7';
-      status.innerText = '無料AIサーバーで書き換え処理中... (初回は15〜30秒かかることがあります)';
+現在のHugging Face Inference ProvidersのImage-to-Imageを使用しています。
+この方式は旧 `api-inference.huggingface.co/models/...` 方式を使用しません。
 
-      try {
-        const maskExportCanvas = document.createElement('canvas');
-        maskExportCanvas.width = bgCanvas.width;
-        maskExportCanvas.height = bgCanvas.height;
-        const mCtx = maskExportCanvas.getContext('2d');
-        mCtx.fillStyle = 'black';
-        mCtx.fillRect(0, 0, maskExportCanvas.width, maskExportCanvas.height);
-        mCtx.drawImage(drawCanvas, 0, 0);
+マジックブラシの「マスク」はVercel側で編集範囲の矩形を求めるために使います。
+AIには選択範囲＋周囲の一部を渡し、生成結果をその矩形だけ元画像に合成します。
 
-        const response = await fetch('/api/hf-inpaint', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            image: bgCanvas.toDataURL('image/png'),
-            mask: maskExportCanvas.toDataURL('image/png'),
-            prompt: prompt
-          })
-        });
+そのため、厳密なStable Diffusion Inpaintingの「白マスク部分だけ生成」とは異なります。
 
-        if (response.ok) {
-          const resultBlob = await response.blob();
-          const resultUrl = URL.createObjectURL(resultBlob);
-          const resultImg = new Image();
-          resultImg.onload = () => {
-            bgCtx.drawImage(resultImg, 0, 0, bgCanvas.width, bgCanvas.height);
-            clearMask();
-            status.style.color = '#51cf66';
-            status.innerText = '書き換え完了！';
-          };
-          resultImg.src = resultUrl;
-        } else {
-          const errText = await response.text();
-          status.style.color = '#ff6b6b';
-          if (response.status === 503) {
-            status.innerText = 'AIモデル準備中... 20秒ほど待ってから「書き換え実行」を再タップしてください。';
-          } else {
-            status.innerText = 'エラー (' + response.status + '): ' + errText.substring(0, 80);
-          }
-        }
-      } catch (err) {
-        status.style.color = '#ff6b6b';
-        status.innerText = '通信エラー: ' + err.message;
-      }
-    }
-  </script>
-</body>
-</html>
+また、Hugging Face Inference Providersには無料の利用枠がありますが、無制限無料ではありません。
