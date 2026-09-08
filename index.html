@@ -82,10 +82,6 @@
       drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     }
 
-    function canvasToBlob(canvas) {
-      return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-    }
-
     async function runInpaint() {
       const prompt = document.getElementById('promptInput').value;
       const status = document.getElementById('status');
@@ -106,17 +102,14 @@
         mCtx.fillRect(0, 0, maskExportCanvas.width, maskExportCanvas.height);
         mCtx.drawImage(drawCanvas, 0, 0);
 
-        const imageBlob = await canvasToBlob(bgCanvas);
-        const maskBlob = await canvasToBlob(maskExportCanvas);
-
-        const formData = new FormData();
-        formData.append('image', imageBlob, 'image.png');
-        formData.append('mask', maskBlob, 'mask.png');
-        formData.append('prompt', prompt);
-
         const response = await fetch('/api/hf-inpaint', {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image: bgCanvas.toDataURL('image/png'),
+            mask: maskExportCanvas.toDataURL('image/png'),
+            prompt: prompt
+          })
         });
 
         if (response.ok) {
