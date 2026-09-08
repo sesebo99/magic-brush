@@ -32,7 +32,7 @@
   <div id="status"></div>
 
   <script>
-    const FAL_KEY = 'D53c1497-e1e4-44cc-81b3-9ef0186a6930:81384732d2e1bc64637e46d379886080';
+    const FAL_KEY = '98e726d7-d0b9-4478-ac12-9431c5496b8b:7516bdf1cb7097f85b22ad6e555eaae2';
 
     const bgCanvas = document.getElementById('bgCanvas');
     const drawCanvas = document.getElementById('drawCanvas');
@@ -104,7 +104,6 @@
         mCtx.fillRect(0, 0, maskExportCanvas.width, maskExportCanvas.height);
         mCtx.drawImage(drawCanvas, 0, 0);
 
-        // 最新のエンドポイントURLに修正
         const response = await fetch('https://queue.fal.run/fal-ai/fast-sdxl/inpainting', {
           method: 'POST',
           headers: {
