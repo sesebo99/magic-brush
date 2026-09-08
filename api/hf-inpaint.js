@@ -1,17 +1,3 @@
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-async function buffer(readable) {
-  const chunks = [];
-  for await (const chunk of readable) {
-    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-  }
-  return Buffer.concat(chunks);
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).send('Method Not Allowed');
@@ -23,16 +9,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const buf = await buffer(req);
-    const contentType = req.headers['content-type'];
+    const { image, mask, prompt } = req.body;
+
+    // Base64からバイナリBufferへ変換
+    const imageBuffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    const maskBuffer = Buffer.from(mask.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+
+    const formData = new FormData();
+    formData.append('image', new Blob([imageBuffer], { type: 'image/png' }), 'image.png');
+    formData.append('mask', new Blob([maskBuffer], { type: 'image/png' }), 'mask.png');
+    formData.append('prompt', prompt);
 
     const response = await fetch('https://api-inference.huggingface.co/models/runwayml/stable-diffusion-inpainting', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${HF_TOKEN}`,
-        'Content-Type': contentType
+        'Authorization': `Bearer ${HF_TOKEN}`
       },
-      body: buf
+      body: formData
     });
 
     const data = await response.arrayBuffer();
