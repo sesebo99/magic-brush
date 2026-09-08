@@ -20,7 +20,8 @@ export default async function handler(req, res) {
       headers: {
         'Authorization': `Bearer ${HF_TOKEN}`
       },
-      body: req
+      body: req,
+      duplex: 'half' // Node.jsのストリーム送信エラーを解決する設定
     });
 
     const data = await response.arrayBuffer();
